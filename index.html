@@ -1,4 +1,125 @@
+<!DOCTYPE html>
 <html>
-<head><title>Hello Page</title></head>
-<body><p>Hello</p></body>
+<head>
+  <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+  <!--The viewport meta tag is used to improve the presentation and behavior of the samples 
+    on iOS devices-->
+  <meta name="viewport" content="initial-scale=1, maximum-scale=1,user-scalable=no">
+  <title>Modified Template Picker Widget</title>
+
+  <link rel="stylesheet" href="http://js.arcgis.com/3.9/js/dojo/dijit/themes/claro/claro.css">
+  <link rel="stylesheet" href="http://js.arcgis.com/3.9/js/esri/css/esri.css">
+  <style>
+    .itemLabel{
+      color:#266A2E;
+    }
+  </style>
+
+  <script src="http://js.arcgis.com/3.9/"></script>
+  <script>
+  
+  //Based off this sample - https://developers.arcgis.com/javascript/jssamples/ed_template_picker.html
+
+    require([
+      "esri/layers/FeatureLayer",
+      "esri/dijit/editing/TemplatePicker",
+      "dojo/_base/array",
+      "dojo/dom",
+      "esri/domUtils", "esri/request",
+      "dojo/parser", "dojo/number", "dojo/json","dojo/dom-construct",
+      "dijit/registry","dojo/_base/array","dojo/dom-style", "dijit/form/Button", "dijit/form/TextBox", "dijit/layout/BorderContainer", "dijit/layout/ContentPane", 
+      "dijit/form/HorizontalSlider",
+      "dojo/domReady!"
+    ], function(
+      FeatureLayer, TemplatePicker,
+      arrayUtils, dom, domUtils, esriRequest,
+      parser, number, JSON, domConstruct,
+      registry, array, domStyle, Button, TextBox
+    ) {
+      var layerUrls = [
+        "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/0",
+        "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/1",
+        "http://sampleserver6.arcgisonline.com/arcgis/rest/services/Wildfire/FeatureServer/2"
+      ];
+      var layers = [];
+
+      var loadFunc = function(evt) {
+        if(evt.layer.name === "Wildfire Response Points" ) {
+        	organizeTemplates(evt.layer); //Organize the template picker by Feature Layer and Feature Type within the Feature Layer
+            layers.push(evt.layer);
+            createTemplatePicker(layers);        	
+        }
+        
+      };
+
+      arrayUtils.forEach(layerUrls, function(url) {
+        var layer = new FeatureLayer(url);
+        layer.on("Load", loadFunc);
+      });
+      
+      function organizeTemplates(featLayer) {    	  
+    	  /*
+    	  Since we are removing unneeded feature types on the fly from the layer
+    	  we need to analyse the back of the array to the front.
+    	  The reason: removing causes reindexing.  And reindexing affects only the items 
+    	  from the current point to the end of the array.
+    	  */
+    	  
+    	  var count = featLayer.types.length;
+    	  while (count--) {
+    		  var featureType = featLayer.types[count];
+    		  if(featureType.name != "Hot Spot" && featureType.name != "Spot Fire" && featureType.name != "Safety Zone"){
+    			  var index = featLayer.types.indexOf(featureType);
+				  console.log("Removing " + featureType.name + " at index " + index + " where count is " + count);
+    			  featLayer.types.splice(count, 1);
+    		  }  
+    	  }
+		  sortAlphabetically(featLayer.types);  
+      }
+      
+      function sortAlphabetically(types) {
+    	  return types.sort(function(a, b) {
+    		    var nameA = a.name.toUpperCase();
+    		    var nameB = b.name.toUpperCase();
+    		    return (nameA < nameB) ? -1 : (nameA > nameB) ? 1 : 0;
+	    	});
+      }
+
+      function createTemplatePicker(layers) {
+        var widget = new TemplatePicker({
+          featureLayers: layers,
+          rows: "auto",
+          columns: 1,
+          grouping: false,
+          showTooltip: true,
+          style: "height: 32%; width: 100px;"
+        }, "templatePickerDiv");
+        
+        widget.startup();
+        
+        widget.on("selection-change", function() {
+          var selected = widget.getSelected();
+          console.log(selected);
+
+          var infoDiv = dom.byId("info");
+          if (selected) {
+            infoDiv.innerHTML = selected.template.name;
+          } else {
+            infoDiv.innerHTML = "";
+          }
+        });
+      }
+    });
+  </script>
+</head>
+
+<body class="claro">
+  <!-- Div that will be used to display the template picker widget -->
+  <div id="containerDiv" style="height:650px;width:900px;">
+    <div id="templatePickerDiv"></div>
+  </div>
+  <p>
+    Selected template label: <span id="info" style="font-weight: bold;"></span>
+  </p>
+</body>
 </html>
